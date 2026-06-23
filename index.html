@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rhythm Sharma — UI/UX Designer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="page-header">
+    <span class="page-name">RHYTHM SHARMA</span>
+    <span class="page-role">UI / UX DESIGNER</span>
+  </header>
+  <main class="stage">
+    <div class="scene-frame">
+      <canvas id="scene" width="432" height="320"></canvas>
+
+      <div id="loading" class="loading">
+        <span class="blink">LOADING WORLD…</span>
+      </div>
+
+      <footer class="hud hud-bottom">
+        <span class="hud-hint">▶ use <b>WASD</b> / <b>arrow keys</b> to walk — the dog follows</span>
+      </footer>
+
+      <!-- Floating interaction prompt, positioned over a hotspot in JS. -->
+      <div id="prompt" class="prompt" hidden>
+        <span class="prompt-key">E</span>
+        <span class="prompt-label">Enter</span>
+      </div>
+    </div>
+
+    <!-- Pixel-styled section panel opened from a hotspot. -->
+    <div id="panel" class="panel-overlay" hidden>
+      <div class="panel" role="dialog" aria-modal="true" aria-labelledby="panel-title">
+        <button id="panel-close" class="panel-close" aria-label="Close">✕</button>
+        <h2 id="panel-title" class="panel-title"></h2>
+        <div id="panel-body" class="panel-body"></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="src/main.js" type="module"></script>
+</body>
+</html>

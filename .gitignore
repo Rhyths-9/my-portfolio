@@ -1,0 +1,4 @@
+.DS_Store
+scene_preview.png
+__pycache__/
+*.pyc
