@@ -279,54 +279,45 @@ async function main() {
   const INT_PW = intGridCols * TW;        // 624 px — canvas width for interior
   const INT_PH = intGridRows * TH;        // 528 px — canvas height for interior
 
-  // Bake the room at 1:1 native pixel size (no scaling needed).
+  // Bake the room into two layers:
+  //   intBaked  — floor + carpet (always below the character)
+  //   intFgBaked — walls, objects, windows (drawn above character so walls occlude her)
   const FLOOR_GID = 104;
+  // Foreground: walls + wall-attached objects (occlude character, sit in front of walls).
+  // Boxes (carpet-level furniture) stays in background so character is visible on carpet.
+  const INT_FG_LAYERS = new Set(['Walls', 'Windows', 'Objects1', 'Objects2']);
+
   const intBaked = document.createElement('canvas');
-  intBaked.width  = INT_PW;
-  intBaked.height = INT_PH;
+  intBaked.width = INT_PW; intBaked.height = INT_PH;
   const ictx = intBaked.getContext('2d');
   ictx.imageSmoothingEnabled = false;
 
-  // Pass 1: flood fill with stone floor over content area
+  const intFgBaked = document.createElement('canvas');
+  intFgBaked.width = INT_PW; intFgBaked.height = INT_PH;
+  const ifctx = intFgBaked.getContext('2d');
+  ifctx.imageSmoothingEnabled = false;
+
+  // Flood-fill base floor into the background canvas
   for (let r = 0; r < intGridRows; r++) {
     for (let c = 0; c < intGridCols; c++) {
       drawTile(ictx, intScene, FLOOR_GID, c * TW, r * TH, 900);
     }
   }
-  // Pass 2: room tiles on top, shifted to content origin
+  // Split layers: structural walls → foreground, everything else → background
   for (const layer of intScene.layers) {
+    const target = INT_FG_LAYERS.has(layer.name) ? ifctx : ictx;
     for (const p of layer.placements) {
       const dx = (p.tx - intCOX) * TW;
       const dy = (p.ty - intCOY) * TH;
       if (dx < 0 || dy < 0 || dx >= INT_PW || dy >= INT_PH) continue;
-      drawTile(ictx, intScene, p.raw, dx, dy, 900);
+      drawTile(target, intScene, p.raw, dx, dy, 900);
     }
   }
 
-  // Interior collision from the Walls layer (1:1 tile size = TW for both axes).
-  const intBlocked = new Uint8Array(intGridCols * intGridRows);
-  for (const layer of intScene.layers) {
-    if (layer.name !== 'Walls') continue;
-    for (const p of layer.placements) {
-      const cx = p.tx - intCOX, cy = p.ty - intCOY;
-      if (cx < 0 || cy < 0 || cx >= intGridCols || cy >= intGridRows) continue;
-      intBlocked[cy * intGridCols + cx] = 1;
-    }
-  }
-  // Door tiles sit on top of wall tiles in the map — carve their positions out
-  // so characters can pass through doorways.
-  const intDoorTs = intScene.tilesets.find(t => t.name === 'Doors_windows_animation');
-  if (intDoorTs) {
-    for (const layer of intScene.layers) {
-      if (layer.name !== 'Windows') continue;
-      for (const p of layer.placements) {
-        if ((p.raw & GID_MASK) < intDoorTs.firstgid) continue;
-        const cx = p.tx - intCOX, cy = p.ty - intCOY;
-        if (cx < 0 || cy < 0 || cx >= intGridCols || cy >= intGridRows) continue;
-        intBlocked[cy * intGridCols + cx] = 0;
-      }
-    }
-  }
+  // Interior: no wall collision — the map's room structure creates dead-ends at
+  // every doorway (wall tiles flank each door on both sides). Free movement is
+  // better for a portfolio. The content-area bounds still block via World.solidAt.
+  const intBlocked = new Uint8Array(intGridCols * intGridRows); // all passable
   const intWorld = new World(intBlocked, intGridCols, intGridRows, TW);
 
   // Interior spawn: bottom-right of the red carpet (content tile 30,18 = px 480,288).
@@ -491,23 +482,21 @@ async function main() {
     } else {
       // ---- Interior ----
       girl.update(dt, ui.isOpen ? noInput : input, intWorld);
-      dog.update(dt, girl, intWorld);
 
       // Hotspot detection — sets ui.active and shows/hides the floating prompt.
       ui.updateInterior(girl);
 
       // Camera locked — no follow.
 
-      // Crop the W×H viewport from intBaked at camera offset → fills canvas 1:1.
+      // Background (floor + carpet) → character → foreground (walls/objects).
+      // This makes walls occlude the character when she walks behind them.
       ctx.clearRect(0, 0, W, H);
-      ctx.drawImage(intBaked, intCamX, intCamY, W, H, 0, 0, W, H);
-
-      // Draw characters at world-space coords, offset by camera.
+      ctx.drawImage(intBaked,   intCamX, intCamY, W, H, 0, 0, W, H);
       ctx.save();
       ctx.translate(-intCamX, -intCamY);
       girl.draw(ctx, charAssets);
-      dog.draw(ctx, charAssets);
       ctx.restore();
+      ctx.drawImage(intFgBaked, intCamX, intCamY, W, H, 0, 0, W, H);
 
       // Exit prompt: only when near bottom, no hotspot active, and panel closed.
       intNearExit = girl.y >= INT_EXIT.y0;
