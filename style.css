@@ -55,17 +55,13 @@ body {
   padding-bottom: 24px;
 }
 
-/* Scene fills available space while keeping the 27:20 ratio.
-   max-width  = 100% of the padded body (= 100vw - 160px)
-   max-height = 100% of the remaining stage height
-   The browser picks whichever constraint binds first. */
+/* Scene: fills the padded body width OR is capped by the available height —
+   whichever is the binding constraint — while keeping the 27:20 ratio.
+   100% here = body content width = 100vw - 160px (the 80px side padding). */
 .scene-frame {
   position: relative;
   aspect-ratio: 432 / 320;
-  max-width: 100%;
-  max-height: 100%;
-  width: auto;
-  height: auto;
+  width: min(100%, calc((100vh - 70px) * (432 / 320)));
   border: 6px solid var(--frame);
   border-radius: 4px;
   box-shadow:
@@ -108,6 +104,21 @@ body {
   background: rgba(20, 16, 24, 0.55);
   padding: 4px 12px;
   border-radius: 3px;
+}
+
+/* ---- Scene-transition fade overlay ---- */
+.scene-fade {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+  z-index: 8;
+}
+.scene-fade.active {
+  opacity: 1;
+  pointer-events: all;
 }
 
 /* ---- Loading ---- */
@@ -199,6 +210,7 @@ body {
 }
 .panel-body p { margin-bottom: 10px; }
 .panel-body a { color: var(--accent); }
+.panel-body b { color: var(--accent); }
 .panel-close {
   position: absolute;
   top: 8px; right: 8px;
