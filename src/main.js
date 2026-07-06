@@ -315,11 +315,9 @@ async function main() {
   }
   const intWorld = new World(intBlocked, intGridCols, intGridRows, TW);
 
-  // Interior entry/exit spawn points.
-  // Placing the player at the centre of the viewport (W/2, H/2) makes the
-  // initial camera land at (0,0) — top-left corner of the room content.
-  const intSpawnX = Math.round(W / 2) + 128; // 344 → intCamX starts at 128 (8 tiles left)
-  const intSpawnY = Math.round(H / 2);        // 160
+  // Interior spawn: bottom-right of the red carpet (content tile 30,18 = px 480,288).
+  const intSpawnX = 30 * TW;  // 480
+  const intSpawnY = 18 * TH;  // 288
   // Exit zone: bottom strip of the interior content (content-space coords)
   const INT_EXIT = { x0: 0, y0: INT_PH - TW * 1.5, x1: INT_PW, y1: INT_PH };
   // Camera: how many content-px are scrolled off the top-left edge.
@@ -368,8 +366,7 @@ async function main() {
       // Keep canvas at W×H — no resize. Camera crops a W×H viewport from intBaked
       // so tiles appear at the same visual scale as the exterior.
       girl.x = intSpawnX; girl.y = intSpawnY;
-      intCamX = Math.round(Math.max(0, Math.min(girl.x - W / 2, INT_PW - W)));
-      intCamY = Math.round(Math.max(0, Math.min(girl.y - H / 2, INT_PH - H)));
+      intCamX = 128; intCamY = 0;
       // Pre-draw so the bitmap has content before the first rAF fires.
       ctx.clearRect(0, 0, W, H);
       ctx.drawImage(intBaked, intCamX, intCamY, W, H, 0, 0, W, H);
@@ -480,15 +477,23 @@ async function main() {
     } else {
       // ---- Interior ----
       girl.update(dt, ui.isOpen ? noInput : input, intWorld);
+      dog.update(dt, girl, intWorld);
 
       // Hotspot detection — sets ui.active and shows/hides the floating prompt.
       ui.updateInterior(girl);
 
-      // Camera locked — no follow logic.
+      // Camera locked — no follow.
 
       // Crop the W×H viewport from intBaked at camera offset → fills canvas 1:1.
       ctx.clearRect(0, 0, W, H);
       ctx.drawImage(intBaked, intCamX, intCamY, W, H, 0, 0, W, H);
+
+      // Draw characters at world-space coords, offset by camera.
+      ctx.save();
+      ctx.translate(-intCamX, -intCamY);
+      girl.draw(ctx, charAssets);
+      dog.draw(ctx, charAssets);
+      ctx.restore();
 
       // Exit prompt: only when near bottom, no hotspot active, and panel closed.
       intNearExit = girl.y >= INT_EXIT.y0;
