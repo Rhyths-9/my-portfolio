@@ -484,9 +484,7 @@ async function main() {
       // Hotspot detection — sets ui.active and shows/hides the floating prompt.
       ui.updateInterior(girl);
 
-      // Camera: centre on girl, clamped so we never scroll past map edges.
-      intCamX = Math.round(Math.max(0, Math.min(girl.x - W / 2, INT_PW - W)));
-      intCamY = Math.round(Math.max(0, Math.min(girl.y - H / 2, INT_PH - H)));
+      // Camera locked — no follow logic.
 
       // Crop the W×H viewport from intBaked at camera offset → fills canvas 1:1.
       ctx.clearRect(0, 0, W, H);
