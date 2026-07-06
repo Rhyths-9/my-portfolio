@@ -313,6 +313,20 @@ async function main() {
       intBlocked[cy * intGridCols + cx] = 1;
     }
   }
+  // Door tiles sit on top of wall tiles in the map — carve their positions out
+  // so characters can pass through doorways.
+  const intDoorTs = intScene.tilesets.find(t => t.name === 'Doors_windows_animation');
+  if (intDoorTs) {
+    for (const layer of intScene.layers) {
+      if (layer.name !== 'Windows') continue;
+      for (const p of layer.placements) {
+        if ((p.raw & GID_MASK) < intDoorTs.firstgid) continue;
+        const cx = p.tx - intCOX, cy = p.ty - intCOY;
+        if (cx < 0 || cy < 0 || cx >= intGridCols || cy >= intGridRows) continue;
+        intBlocked[cy * intGridCols + cx] = 0;
+      }
+    }
+  }
   const intWorld = new World(intBlocked, intGridCols, intGridRows, TW);
 
   // Interior spawn: bottom-right of the red carpet (content tile 30,18 = px 480,288).
