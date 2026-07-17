@@ -32,9 +32,10 @@ export const INTERIOR_HOTSPOTS = [
   {
     id: 'projects',
     type: 'panel',
-    // Near bookshelf (top-right room). Abs tiles x=38-43, y=8-10 — walkable.
-    zone: [304, 64, 384, 96],
-    anchor: [344, 56],
+    // Reachable corridor just below the bookshelf wall (content row 8, cols 19-24).
+    // The bookshelf room itself is walled off; the player interacts from here.
+    zone: [304, 128, 384, 144],
+    anchor: [344, 120],
     label: 'View',
     title: 'PROJECTS',
     body: `<p><b>AtomFlo — All-in-One SaaS Workspace</b> (2025–now)<br>
@@ -50,9 +51,9 @@ Live: <a href="https://thesquare.irarealty.in" target="_blank">thesquare.irareal
   {
     id: 'skills',
     type: 'panel',
-    // Near workbench/potions (left corridor). Abs tiles x=24-26, y=16-19 — walkable.
-    zone: [80, 192, 112, 240],
-    anchor: [96, 184],
+    // Left corridor (content row 8, cols 10-14) — reachable floor inside the room.
+    zone: [160, 128, 240, 144],
+    anchor: [200, 120],
     label: 'View',
     title: 'SKILLS',
     body: `<p><b>Design</b><br>

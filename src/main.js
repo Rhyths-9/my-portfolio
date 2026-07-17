@@ -10,7 +10,7 @@
 // through/behind it), which keeps roaming free.
 
 import { loadCharacterAssets, World, Girl, Dog } from './characters.js?v=2';
-import { Interactions } from './interactions.js?v=5';
+import { Interactions } from './interactions.js?v=7';
 
 const ASSET_DIR = 'assets/';
 const TMX_URL      = ASSET_DIR + 'Exterior.tmx';
@@ -279,23 +279,43 @@ async function main() {
   const INT_PW = intGridCols * TW;        // 624 px — canvas width for interior
   const INT_PH = intGridRows * TH;        // 528 px — canvas height for interior
 
-  // Bake the room into two layers:
-  //   intBaked  — floor + carpet (always below the character)
-  //   intFgBaked — walls, objects, windows (drawn above character so walls occlude her)
+  // Rendering split:
+  //   intBaked   — flat floor + carpet + rug, baked once (always below the character)
+  //   intFgTiles — walls/objects, Y-sorted with the character each frame
   const FLOOR_GID = 104;
   // Foreground: walls + wall-attached objects (occlude character, sit in front of walls).
   // Boxes (carpet-level furniture) stays in background so character is visible on carpet.
   const INT_FG_LAYERS = new Set(['Walls', 'Windows', 'Objects1', 'Objects2']);
+  // The large central rug lives in the Objects1 layer but is floor, not furniture:
+  // it must be walkable AND rendered below the character (so she walks over it).
+  const INT_RUG_GIDS = new Set([
+    403, 404, 405, 406, 407, 416, 417, 418, 419, 420, 421, 422,
+    430, 431, 432, 433, 434, 435, 436, 444, 445, 446, 447, 448, 449, 450,
+    459, 460, 461, 462, 463, 464, 473, 474, 475, 476,
+  ]);
+  // Hidden doorway into the sealed bottom-left "potions" room. The map draws an
+  // arch (rows 12-13) over a 5-tile-thick wall. The wall stays fully drawn and
+  // solid-looking, but is walkable — the character passes through it and is
+  // hidden behind the wall/arch while doing so (a secret-passage effect).
+  //   CARVE   — content cells forced walkable (a 2-wide passage through the wall).
+  //   OVERLAY — Walls tiles here are drawn ON TOP of the character every frame,
+  //             so she's occluded while crossing the wall band (wide enough to
+  //             cover her sprite, which overhangs the 2-tile passage).
+  // Cells are 'col,row' in interior content coordinates.
+  const INT_DOOR_CARVE = new Set([
+    '12,9', '13,9', '12,10', '13,10', '12,11', '13,11',
+    '12,12', '13,12', '12,13', '13,13',
+  ]);
+  const INT_DOOR_OVERLAY = new Set([
+    '11,9', '12,9', '13,9', '14,9', '11,10', '12,10', '13,10', '14,10',
+    '11,11', '12,11', '13,11', '14,11', '11,12', '12,12', '13,12', '14,12',
+    '11,13', '12,13', '13,13', '14,13',
+  ]);
 
   const intBaked = document.createElement('canvas');
   intBaked.width = INT_PW; intBaked.height = INT_PH;
   const ictx = intBaked.getContext('2d');
   ictx.imageSmoothingEnabled = false;
-
-  const intFgBaked = document.createElement('canvas');
-  intFgBaked.width = INT_PW; intFgBaked.height = INT_PH;
-  const ifctx = intFgBaked.getContext('2d');
-  ifctx.imageSmoothingEnabled = false;
 
   // Flood-fill base floor into the background canvas
   for (let r = 0; r < intGridRows; r++) {
@@ -303,28 +323,73 @@ async function main() {
       drawTile(ictx, intScene, FLOOR_GID, c * TW, r * TH, 900);
     }
   }
-  // Split layers: structural walls → foreground, everything else → background
+  // Split tiles: flat ground/carpet/rug → baked background; walls + objects →
+  // a Y-sorted foreground list so the character is drawn in front of anything
+  // whose base is above her feet, and behind anything whose base is below.
+  const intFgTiles = [];
+  const intDoorOverlay = [];  // doorway wall/arch tiles, always drawn over the character
   for (const layer of intScene.layers) {
-    const target = INT_FG_LAYERS.has(layer.name) ? ifctx : ictx;
+    const layerFg = INT_FG_LAYERS.has(layer.name);
     for (const p of layer.placements) {
-      const dx = (p.tx - intCOX) * TW;
-      const dy = (p.ty - intCOY) * TH;
+      const cx = p.tx - intCOX, cy = p.ty - intCOY;
+      const isRug = INT_RUG_GIDS.has(p.raw & GID_MASK);
+      const dx = cx * TW;
+      const dy = cy * TH;
       if (dx < 0 || dy < 0 || dx >= INT_PW || dy >= INT_PH) continue;
-      drawTile(target, intScene, p.raw, dx, dy, 900);
+      // Doorway wall/arch tiles: render on top of the character so she vanishes
+      // behind the wall while walking through the secret passage.
+      if (layer.name === 'Walls' && INT_DOOR_OVERLAY.has(cx + ',' + cy)) {
+        intDoorOverlay.push({ raw: p.raw, dx, dy });
+      } else if (layerFg && !isRug) {
+        intFgTiles.push({ raw: p.raw, dx, dy, anchorY: dy + TH });
+      } else {
+        drawTile(ictx, intScene, p.raw, dx, dy, 900);
+      }
     }
   }
+  // Draw order is stable per frame; sort once by base edge (feet line).
+  intFgTiles.sort((a, b) => a.anchorY - b.anchorY);
 
-  // Interior: no wall collision — the map's room structure creates dead-ends at
-  // every doorway (wall tiles flank each door on both sides). Free movement is
-  // better for a portfolio. The content-area bounds still block via World.solidAt.
-  const intBlocked = new Uint8Array(intGridCols * intGridRows); // all passable
+  // Interior collision — floor-based confinement:
+  //   1. Block everything by default (this walls off the empty exterior void,
+  //      which has no floor tiles, so the character can never leave the room).
+  //   2. Open up designed floor tiles (Floor / Tile Layer 6 / Boxes carpet).
+  //   3. Re-block walls and furniture/objects.
+  // Doorways in this map are floor archways (open floor with a decorative arch),
+  // so they're already walkable via step 2. The Doors_windows tiles are WINDOWS
+  // set into the walls — they must stay solid, so we do NOT carve them.
+  const INT_FLOOR_LAYERS = new Set(['Floor', 'Tile Layer 6', 'Boxes']);
+  const INT_SOLID_LAYERS = new Set(['Walls', 'Objects1', 'Objects2']);
+  const intBlocked = new Uint8Array(intGridCols * intGridRows).fill(1);
+  const setCell = (p, v) => {
+    const cx = p.tx - intCOX, cy = p.ty - intCOY;
+    if (cx < 0 || cy < 0 || cx >= intGridCols || cy >= intGridRows) return;
+    intBlocked[cy * intGridCols + cx] = v;
+  };
+  for (const layer of intScene.layers) {
+    if (INT_FLOOR_LAYERS.has(layer.name)) for (const p of layer.placements) setCell(p, 0);
+  }
+  for (const layer of intScene.layers) {
+    if (!INT_SOLID_LAYERS.has(layer.name)) continue;
+    // Rug tiles stay walkable even though they live in a solid layer.
+    for (const p of layer.placements) {
+      if (!INT_RUG_GIDS.has(p.raw & GID_MASK)) setCell(p, 1);
+    }
+  }
+  // 4. Carve doorway passages into otherwise-sealed rooms.
+  for (const key of INT_DOOR_CARVE) {
+    const [cx, cy] = key.split(',').map(Number);
+    intBlocked[cy * intGridCols + cx] = 0;
+  }
   const intWorld = new World(intBlocked, intGridCols, intGridRows, TW);
 
-  // Interior spawn: bottom-right of the red carpet (content tile 30,18 = px 480,288).
+  // Interior spawn: on the red carpet (content tile 30,16 = px 480,256), a
+  // couple tiles above the exit strip so she doesn't exit on arrival.
   const intSpawnX = 30 * TW;  // 480
-  const intSpawnY = 18 * TH;  // 288
-  // Exit zone: bottom strip of the interior content (content-space coords)
-  const INT_EXIT = { x0: 0, y0: INT_PH - TW * 1.5, x1: INT_PW, y1: INT_PH };
+  const intSpawnY = 16 * TH;  // 256
+  // Exit zone: bottom walkable row of the room (row 18). The bottom wall (row 19)
+  // now blocks movement, so the exit triggers here instead of the map edge.
+  const INT_EXIT = { x0: 0, y0: 18 * TH, x1: INT_PW, y1: INT_PH };
   // Camera: how many content-px are scrolled off the top-left edge.
   let intCamX = 0, intCamY = 0;
   // ---- End interior setup --------------------------------------------
@@ -488,15 +553,22 @@ async function main() {
 
       // Camera locked — no follow.
 
-      // Background (floor + carpet) → character → foreground (walls/objects).
-      // This makes walls occlude the character when she walks behind them.
+      // Background (floor + carpet + rug) is baked; walls/objects are Y-sorted
+      // with the character so she's drawn in front of anything whose base is
+      // above her feet, and behind anything whose base is below.
       ctx.clearRect(0, 0, W, H);
-      ctx.drawImage(intBaked,   intCamX, intCamY, W, H, 0, 0, W, H);
+      ctx.drawImage(intBaked, intCamX, intCamY, W, H, 0, 0, W, H);
       ctx.save();
       ctx.translate(-intCamX, -intCamY);
-      girl.draw(ctx, charAssets);
+      let girlDrawn = false;
+      for (const it of intFgTiles) {
+        if (!girlDrawn && it.anchorY > girl.y) { girl.draw(ctx, charAssets); girlDrawn = true; }
+        drawTile(ctx, intScene, it.raw, it.dx, it.dy, 900);
+      }
+      if (!girlDrawn) girl.draw(ctx, charAssets);
+      // Doorway wall/arch tiles always on top — hides her while she passes through.
+      for (const it of intDoorOverlay) drawTile(ctx, intScene, it.raw, it.dx, it.dy, 900);
       ctx.restore();
-      ctx.drawImage(intFgBaked, intCamX, intCamY, W, H, 0, 0, W, H);
 
       // Exit prompt: only when near bottom, no hotspot active, and panel closed.
       intNearExit = girl.y >= INT_EXIT.y0;

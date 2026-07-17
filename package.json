@@ -1,0 +1,28 @@
+{
+  "name": "site",
+  "version": "1.0.0",
+  "description": "A 90s-style top-down pixel-art portfolio. The landing scene is the **exact demo map** from the Craftpix \"Main Character's Home\" asset pack, rendered live to a crisp `<canvas>` with the pack's animations (chimney smoke, birds, cat, swaying trees) playing in real time.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rhyths-9/my-portfolio.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Rhyths-9/my-portfolio/issues"
+  },
+  "homepage": "https://github.com/Rhyths-9/my-portfolio#readme",
+  "dependencies": {
+    "phaser": "^4.2.1"
+  },
+  "devDependencies": {
+    "vite": "^8.1.4"
+  }
+}

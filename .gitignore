@@ -2,3 +2,6 @@
 scene_preview.png
 __pycache__/
 *.pyc
+node_modules/
+dist/
+*.log
