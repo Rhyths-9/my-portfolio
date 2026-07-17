@@ -293,23 +293,31 @@ async function main() {
     430, 431, 432, 433, 434, 435, 436, 444, 445, 446, 447, 448, 449, 450,
     459, 460, 461, 462, 463, 464, 473, 474, 475, 476,
   ]);
-  // Hidden doorway into the sealed bottom-left "potions" room. The map draws an
-  // arch (rows 12-13) over a 5-tile-thick wall. The wall stays fully drawn and
+  // Hidden doorways into otherwise-sealed rooms. Each wall stays fully drawn and
   // solid-looking, but is walkable — the character passes through it and is
-  // hidden behind the wall/arch while doing so (a secret-passage effect).
-  //   CARVE   — content cells forced walkable (a 2-wide passage through the wall).
-  //   OVERLAY — Walls tiles here are drawn ON TOP of the character every frame,
-  //             so she's occluded while crossing the wall band (wide enough to
-  //             cover her sprite, which overhangs the 2-tile passage).
+  // hidden behind the wall/furniture while doing so (a secret-passage effect).
+  //   CARVE   — content cells forced walkable (the passage through the barrier).
+  //   OVERLAY — foreground tiles here are drawn ON TOP of the character every
+  //             frame, so she's occluded while crossing (bands are wider than the
+  //             passage since her sprite overhangs it).
   // Cells are 'col,row' in interior content coordinates.
+  //   Room 1: bottom-left "potions" room — vertical passage down through the arch.
+  //   Room 2: far-right "pantry" — vertical passage up through the arched doorway
+  //           at the top-right of the desk room (cols 32-33) into the pantry.
   const INT_DOOR_CARVE = new Set([
     '12,9', '13,9', '12,10', '13,10', '12,11', '13,11',
     '12,12', '13,12', '12,13', '13,13',
+    // Arch between desk room (below) and pantry (above): cols 32-33, rows 7-10.
+    '32,7', '33,7', '32,8', '33,8', '32,9', '33,9', '32,10', '33,10',
   ]);
   const INT_DOOR_OVERLAY = new Set([
     '11,9', '12,9', '13,9', '14,9', '11,10', '12,10', '13,10', '14,10',
     '11,11', '12,11', '13,11', '14,11', '11,12', '12,12', '13,12', '14,12',
     '11,13', '12,13', '13,13', '14,13',
+    // Arch wall band (cols 31-34, rows 7-10), drawn over the character so she's
+    // hidden behind the wall/arch while passing through the doorway.
+    '31,7', '32,7', '33,7', '34,7', '31,8', '32,8', '33,8', '34,8',
+    '31,9', '32,9', '33,9', '34,9', '31,10', '32,10', '33,10', '34,10',
   ]);
 
   const intBaked = document.createElement('canvas');
@@ -336,9 +344,9 @@ async function main() {
       const dx = cx * TW;
       const dy = cy * TH;
       if (dx < 0 || dy < 0 || dx >= INT_PW || dy >= INT_PH) continue;
-      // Doorway wall/arch tiles: render on top of the character so she vanishes
-      // behind the wall while walking through the secret passage.
-      if (layer.name === 'Walls' && INT_DOOR_OVERLAY.has(cx + ',' + cy)) {
+      // Doorway wall/furniture tiles: render on top of the character so she
+      // vanishes behind them while walking through the secret passage.
+      if (layerFg && INT_DOOR_OVERLAY.has(cx + ',' + cy)) {
         intDoorOverlay.push({ raw: p.raw, dx, dy });
       } else if (layerFg && !isRug) {
         intFgTiles.push({ raw: p.raw, dx, dy, anchorY: dy + TH });
