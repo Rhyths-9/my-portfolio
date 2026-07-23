@@ -5,3 +5,11 @@ __pycache__/
 node_modules/
 dist/
 *.log
+
+# Raw/source assets and scratch render artifacts (processed sprites are committed individually)
+assets/vecteezy_telephone-pixel-art_.jpg
+assets/Free Base by Cozy Fae/
+assets/Interior.png.bak
+assets/Interior.tmx
+interior_content.png
+interior_preview.png
