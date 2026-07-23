@@ -36,11 +36,12 @@ SaaS Product Design · API &amp; Developer Tool UX · AI-Augmented Workflows · 
   {
     id: 'projects',
     type: 'panel',
-    // Reachable corridor just below the bookshelf wall (content row 8, cols 19-24).
-    // The bookshelf room itself is walled off; the player interacts from here.
-    zone: [304, 128, 384, 144],
-    anchor: [344, 120],
-    label: 'View',
+    // Right up against the bookshelf + blue sofa cluster (content cols 25-26).
+    // Only the cells immediately beside it (col 24) and just below the sofa
+    // (cols 25-26, row 8), so it triggers only when the character is close.
+    zone: [384, 80, 432, 144],
+    anchor: [400, 96],
+    label: 'Projects',
     title: 'PROJECTS',
     body: `<p><b>AtomFlo — All-in-One SaaS Workspace</b> (2025–now)<br>
 Onboarding flows, dashboard layouts across 8 modules, AI feature interfaces, full Figma component library.</p>

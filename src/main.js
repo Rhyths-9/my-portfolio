@@ -10,7 +10,7 @@
 // through/behind it), which keeps roaming free.
 
 import { loadCharacterAssets, World, Girl, Dog } from './characters.js?v=2';
-import { Interactions } from './interactions.js?v=13';
+import { Interactions } from './interactions.js?v=16';
 
 const ASSET_DIR = 'assets/';
 const TMX_URL      = ASSET_DIR + 'Exterior.tmx';
