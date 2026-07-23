@@ -79,6 +79,21 @@ Live: <a href="https://thesquare.irarealty.in" target="_blank">thesquare.irareal
 <p>Portfolio: <a href="https://www.behance.net/rhythm-sharma" target="_blank">behance.net/rhythm-sharma</a></p>
 <p>LinkedIn: <a href="https://www.linkedin.com/in/rhythmss" target="_blank">linkedin.com/in/rhythmss</a></p>`,
   },
+  {
+    id: 'also',
+    type: 'panel',
+    // Pantry / garlic room (far-right, content cols 28-33, rows 4-6). Covers the
+    // walkable floor in front of the food shelf.
+    zone: [448, 64, 544, 112],
+    anchor: [488, 80],
+    label: "I'm also good at",
+    title: "I'M ALSO GOOD AT",
+    body: `<p>Beyond core product design, I bring:</p>
+<p><b>Collaboration</b> &mdash; facilitating workshops, aligning stakeholders, and working shoulder-to-shoulder with engineering.</p>
+<p><b>Communication</b> &mdash; turning complex problems into clear stories, specs, and presentations.</p>
+<p><b>Building</b> &mdash; front-end awareness (HTML/CSS), rapid prototyping, and AI-augmented workflows to ship faster.</p>
+<p><b>Design ops</b> &mdash; documentation, component libraries, and systems that scale across teams.</p>`,
+  },
 ];
 
 export class Interactions {
@@ -156,6 +171,12 @@ export class Interactions {
     this.refs.panel.hidden = false;
     this.refs.prompt.hidden = true;
     this.open = true;
+  }
+
+  // Open an interior section's panel directly by its id (used by the side menu).
+  openSection(id) {
+    const h = INTERIOR_HOTSPOTS.find((x) => x.id === id);
+    if (h) this.openPanel(h);
   }
 
   close() {

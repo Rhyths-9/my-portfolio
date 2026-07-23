@@ -9,8 +9,8 @@
 // Only the house and fence block movement; foliage never blocks (she passes
 // through/behind it), which keeps roaming free.
 
-import { loadCharacterAssets, World, Girl, Dog } from './characters.js?v=2';
-import { Interactions } from './interactions.js?v=16';
+import { loadCharacterAssets, World, Girl } from './characters.js?v=2';
+import { Interactions } from './interactions.js?v=18';
 
 const ASSET_DIR = 'assets/';
 const TMX_URL      = ASSET_DIR + 'Exterior.tmx';
@@ -438,11 +438,10 @@ async function main() {
   let intCamX = 0, intCamY = 0;
   // ---- End interior setup --------------------------------------------
 
-  // Spawn on open ground just below the gate; dog a little behind.
+  // Spawn on open ground just below the gate.
   const spawnX = (-3.5 - ox) * TW;
   const spawnY = (8 - oy) * TH + 8; // tile-centered so she isn't wedged
   const girl = new Girl(spawnX, spawnY);
-  const dog = new Dog(spawnX - 14, spawnY + 4);
 
   // --- input ---
   const input = { left: false, right: false, up: false, down: false };
@@ -507,7 +506,6 @@ async function main() {
       hudHint.innerHTML = '&#9654; use <b>WASD</b> or <b>arrow keys</b> to move around';
       hudTop.hidden = false;
     }
-    dog.x = girl.x - 14; dog.y = girl.y + 4;
     activeScene = to;
     fadeEl.classList.remove('active');
     await new Promise(r => setTimeout(r, 380));
@@ -544,11 +542,51 @@ async function main() {
   let doorPhaseStart = 0;    // game-time when current phase began
   let doorT = 0;             // current draw-time fed to drawTile for door tiles
 
-  // Characters appear in the Y-sorted draw list as renderable items.
+  // The character appears in the Y-sorted draw list as a renderable item.
   const girlItem = { anchorY: 0, isChar: true, draw: (tt) => girl.draw(ctx, charAssets) };
-  const dogItem = { anchorY: 0, isChar: true, draw: (tt) => dog.draw(ctx, charAssets) };
 
   document.getElementById('loading').classList.add('hidden');
+
+  // Left-side quick menu: opens each interior section's panel directly, for
+  // visitors who'd rather not walk the house. Icons expand to labels on hover.
+  const SIDE_MENU = [
+    { id: 'about',    icon: '👤', label: 'About me' },
+    { id: 'skills',   icon: '🛠️', label: 'What I bring' },
+    { id: 'projects', icon: '📁', label: 'Projects' },
+    { id: 'also',     icon: '✨', label: 'Also good at' },
+    { id: 'contact',  icon: '☎️', label: 'Contact' },
+    { href: 'assets/rhythm-sharma-cv.pdf', download: true, icon: '📄', label: 'Download CV' },
+  ];
+  const sideMenu = $('side-menu');
+  for (const item of SIDE_MENU) {
+    // Download items become <a> links; section items become buttons.
+    const el = document.createElement(item.href ? 'a' : 'button');
+    el.className = 'side-item';
+    el.title = item.label;
+    el.innerHTML =
+      `<span class="side-icon">${item.icon}</span><span class="side-label">${item.label}</span>`;
+    if (item.href) {
+      el.href = item.href;
+      if (item.download) el.setAttribute('download', '');
+    } else {
+      el.type = 'button';
+      el.addEventListener('click', () => ui.openSection(item.id));
+    }
+    sideMenu.appendChild(el);
+  }
+
+  // Title splash: reveal once assets are loaded; the character stays frozen and
+  // the scene animates behind it until the player clicks "Let's get going".
+  let started = false;
+  const startOverlay = $('start-overlay');
+  startOverlay.hidden = false;
+  $('start-btn').addEventListener('click', () => {
+    started = true;
+    startOverlay.hidden = true;
+    hudTop.hidden = false;         // "Explore inside..." message
+    $('hud-bottom').hidden = false; // "use WASD..." controls line
+    sideMenu.hidden = false;        // quick-access section menu
+  });
 
   const start = performance.now();
   let last = start;
@@ -558,9 +596,8 @@ async function main() {
     last = now;
 
     if (activeScene === 'exterior') {
-      // Freeze girl while panel open; dog keeps following.
-      girl.update(dt, ui.isOpen ? noInput : input, world);
-      dog.update(dt, girl, world);
+      // Freeze girl while the title splash is up or a panel is open.
+      girl.update(dt, (started && !ui.isOpen) ? input : noInput, world);
       ui.update(girl);
 
       // Door state machine: opens when near, closes when far.
@@ -583,8 +620,7 @@ async function main() {
       ctx.drawImage(baked, 0, 0);
 
       girlItem.anchorY = girl.y + 0.5;
-      dogItem.anchorY  = dog.y  + 0.5;
-      const order = [...sortedTiles, girlItem, dogItem].sort((a, b) => a.anchorY - b.anchorY);
+      const order = [...sortedTiles, girlItem].sort((a, b) => a.anchorY - b.anchorY);
       for (const it of order) {
         if (it.isChar) it.draw(t);
         else drawTile(ctx, scene, it.raw, it.dx, it.dy, it.isDoor ? doorT : t);
@@ -639,7 +675,7 @@ async function main() {
   requestAnimationFrame(frame);
 
   // expose for quick scripted testing
-  window.__game = { girl, dog, world, input };
+  window.__game = { girl, world, input };
 }
 
 main().catch((err) => {

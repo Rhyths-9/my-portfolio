@@ -95,17 +95,72 @@ body {
   pointer-events: none;
   z-index: 3;
 }
+/* ---- Left-most quick-access menu (fixed to the screen) ---- */
+.side-menu {
+  position: fixed;
+  left: clamp(8px, 1.6vw, 22px);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* each chip sizes to its own content, not the widest */
+  gap: clamp(8px, 1.5vh, 15px);
+  z-index: 9;
+}
+.side-menu[hidden] { display: none; }
+.side-item {
+  display: flex;
+  align-items: center;
+  padding: 11px 12px;
+  background: rgba(20, 16, 24, 0.78);
+  border: 2px solid var(--frame-hi);
+  border-radius: 8px;
+  color: var(--paper);
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(7px, 1vw, 11px);
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.side-item:hover, .side-item:focus-visible {
+  background: var(--accent);
+  border-color: #000;
+  outline: none;
+}
+.side-icon {
+  flex: 0 0 auto;
+  width: 28px;
+  text-align: center;
+  font-size: clamp(20px, 2.6vw, 28px);
+  line-height: 1;
+}
+/* Label is fully hidden until the item is hovered / focused. */
+.side-label {
+  flex: 0 0 auto;
+  max-width: 0;
+  margin-left: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-width 0.22s ease, margin-left 0.22s ease, opacity 0.18s ease;
+}
+.side-item:hover .side-label,
+.side-item:focus-visible .side-label {
+  max-width: 220px;
+  margin-left: 10px;
+  opacity: 1;
+}
+
 .hud-bottom { bottom: 0; justify-content: center; }
 .hud-top { top: 0; justify-content: center; }
-.hud-top[hidden] { display: none; }
+.hud[hidden] { display: none; }
 
 .hud-hint {
   font-size: clamp(13px, 2vw, 20px);
   color: #fff;
   text-shadow: 2px 2px 0 #000;
-  background: rgba(20, 16, 24, 0.55);
   padding: 4px 12px;
-  border-radius: 3px;
 }
 
 .hud-msg {
@@ -114,9 +169,7 @@ body {
   line-height: 1.5;
   color: #ffe9b0;
   text-shadow: 2px 2px 0 #000, 0 0 8px rgba(0, 0, 0, 0.6);
-  background: rgba(20, 16, 24, 0.6);
   padding: 7px 14px;
-  border-radius: 3px;
   text-align: center;
 }
 
@@ -242,3 +295,84 @@ body {
 .panel-close:hover { filter: brightness(1.1); }
 
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---- Start / title splash (over the live scene on first load) ---- */
+.start-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(14px, 3.5vh, 30px);
+  padding: 20px;
+  text-align: center;
+  background: radial-gradient(120% 100% at 50% 40%, rgba(12,10,16,.6), rgba(12,10,16,.88));
+  animation: fade 0.35s ease;
+}
+.start-overlay[hidden] { display: none; }
+
+.start-tagline {
+  position: absolute;
+  top: clamp(14px, 5vh, 40px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(9px, 1.5vw, 15px);
+  line-height: 1.7;
+  color: #fff;
+  text-shadow: 2px 2px 0 #000;
+}
+.start-title { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.start-name {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(20px, 5vw, 54px);
+  letter-spacing: 2px;
+  color: #fff;
+  text-shadow: 3px 3px 0 #000, 0 0 14px rgba(0,0,0,.6);
+}
+.start-sub {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(9px, 1.5vw, 15px);
+  letter-spacing: 5px;
+  color: var(--paper);
+  text-shadow: 2px 2px 0 #000;
+}
+.start-btn {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(12px, 2vw, 20px);
+  color: #fff;
+  background: var(--accent);
+  border: 3px solid #000;
+  border-radius: 6px;
+  padding: 14px 26px;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #000, 0 8px 18px rgba(0,0,0,.5);
+  transition: transform .08s ease, box-shadow .08s ease, filter .08s ease;
+}
+.start-btn:hover { filter: brightness(1.1); }
+.start-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #000, 0 3px 8px rgba(0,0,0,.5); }
+
+.start-foot {
+  position: absolute;
+  bottom: clamp(14px, 5vh, 34px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(7px, 1.1vw, 11px);
+  color: #fff;
+  text-shadow: 1px 1px 0 #000;
+}
+.start-linkedin {
+  background: #2867b2;
+  color: #fff;
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+.start-linkedin:hover { filter: brightness(1.12); }

@@ -10,10 +10,9 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="page-header">
-    <span class="page-name">RHYTHM SHARMA</span>
-    <span class="page-role">UI / UX DESIGNER</span>
-  </header>
+  <!-- Left-most quick menu (fixed to the screen): opens section panels directly. -->
+  <nav id="side-menu" class="side-menu" hidden></nav>
+
   <main class="stage">
     <div class="scene-frame">
       <canvas id="scene" width="432" height="320"></canvas>
@@ -22,11 +21,11 @@
         <span class="blink">LOADING WORLD…</span>
       </div>
 
-      <header class="hud hud-top" id="hud-top">
-        <span class="hud-msg">Explore inside the house to know about me</span>
+      <header class="hud hud-top" id="hud-top" hidden>
+        <span class="hud-msg">Explore inside the house to know more about me</span>
       </header>
 
-      <footer class="hud hud-bottom">
+      <footer class="hud hud-bottom" id="hud-bottom" hidden>
         <span class="hud-hint">▶ use <b>WASD</b> or <b>arrow keys</b> to move around</span>
       </footer>
 
@@ -37,6 +36,20 @@
       <div id="prompt" class="prompt" hidden>
         <span class="prompt-key">E</span>
         <span class="prompt-label">Enter</span>
+      </div>
+
+      <!-- Start / title splash shown on first load, over the live scene. -->
+      <div id="start-overlay" class="start-overlay" hidden>
+        <p class="start-tagline">UI/UX, Product Design &amp; Design Systems portfolio</p>
+        <div class="start-title">
+          <span class="start-name">RHYTHM SHARMA</span>
+          <span class="start-sub">— PORTFOLIO —</span>
+        </div>
+        <button id="start-btn" class="start-btn">LET'S GET GOING</button>
+        <div class="start-foot">
+          <span>No time to explore my portfolio?</span>
+          <a href="https://www.linkedin.com/in/rhythmss" target="_blank" class="start-linkedin">LinkedIn</a>
+        </div>
       </div>
     </div>
 
@@ -50,6 +63,6 @@
     </div>
   </main>
 
-  <script src="src/main.js?v=53" type="module"></script>
+  <script src="src/main.js?v=59" type="module"></script>
 </body>
 </html>
