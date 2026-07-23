@@ -10,7 +10,7 @@
 // through/behind it), which keeps roaming free.
 
 import { loadCharacterAssets, World, Girl, Dog } from './characters.js?v=2';
-import { Interactions } from './interactions.js?v=7';
+import { Interactions } from './interactions.js?v=13';
 
 const ASSET_DIR = 'assets/';
 const TMX_URL      = ASSET_DIR + 'Exterior.tmx';
@@ -173,10 +173,11 @@ function drawTile(target, scene, raw, dx, dy, timeMs) {
 }
 
 async function main() {
-  const [scene, intScene, charAssets] = await Promise.all([
+  const [scene, intScene, charAssets, phoneImg] = await Promise.all([
     parseTmx(TMX_URL),
     parseTmx(INTERIOR_URL),
     loadCharacterAssets(),
+    loadImage(ASSET_DIR + 'telephone.png?v=3'),
   ]);
   const { TW, TH, minTileX, minTileY, maxTileX, maxTileY, layers } = scene;
 
@@ -231,10 +232,31 @@ async function main() {
       }
     }
   }
-  function treeGroupAnchorY(dx, dy) {
-    let y = dy;
-    while (treePxSet.has(`${dx},${y + TH}`)) y += TH;
-    return y + TH;
+  // Group connected tree tiles into whole-tree clusters (4-connectivity). Every
+  // tile in a cluster shares the cluster's bottom edge as its sort anchor, so the
+  // ENTIRE tree (trunk + full canopy width) occludes the character at once — she
+  // hides completely behind it instead of showing in front of the side leaves.
+  const treeAnchorByPx = new Map();
+  {
+    const visited = new Set();
+    for (const key of treePxSet) {
+      if (visited.has(key)) continue;
+      const cluster = [key];
+      const stack = [key];
+      visited.add(key);
+      let maxY = -Infinity;
+      while (stack.length) {
+        const k = stack.pop();
+        const [cx, cy] = k.split(',').map(Number);
+        if (cy > maxY) maxY = cy;
+        for (const [ox, oy] of [[TW, 0], [-TW, 0], [0, TH], [0, -TH]]) {
+          const nk = `${cx + ox},${cy + oy}`;
+          if (treePxSet.has(nk) && !visited.has(nk)) { visited.add(nk); stack.push(nk); cluster.push(nk); }
+        }
+      }
+      const anchorY = maxY + TH;
+      for (const k of cluster) treeAnchorByPx.set(k, anchorY);
+    }
   }
 
   // Pass 2: normal tile categorisation + placement.
@@ -256,9 +278,10 @@ async function main() {
       } else if (isTopLayer || tsName === 'Smoke_animation') {
         topTiles.push({ raw: p.raw, dx, dy });
       } else {
-        // Trees use the trunk-bottom anchor so the whole tree occludes at once.
+        // Trees use the whole-cluster bottom anchor so the entire tree occludes
+        // at once (character hides completely behind it).
         const anchorY = tsName === 'Trees_animation'
-          ? treeGroupAnchorY(dx, dy)
+          ? treeAnchorByPx.get(`${dx},${dy}`)
           : dy + TH;
         // Tag door tiles so the frame loop can drive them with the door clock.
         const isDoor = dwTs && tsName === 'Doors_windows_animation'
@@ -355,6 +378,18 @@ async function main() {
       }
     }
   }
+  // Telephone sprite (custom PNG, not a tileset tile) on the bedside nightstand
+  // (content col 18, rows 3-4). Centered on the stand, base resting on its top
+  // surface, Y-sorted at the nightstand's base edge (row 4 bottom).
+  intFgTiles.push({
+    img: phoneImg,
+    w: phoneImg.width,
+    h: phoneImg.height,
+    dx: Math.round(18 * TW + TW / 2 - phoneImg.width / 2),
+    dy: 55 - phoneImg.height,
+    anchorY: 5 * TH,
+  });
+
   // Draw order is stable per frame; sort once by base edge (feet line).
   intFgTiles.sort((a, b) => a.anchorY - b.anchorY);
 
@@ -395,9 +430,10 @@ async function main() {
   // couple tiles above the exit strip so she doesn't exit on arrival.
   const intSpawnX = 30 * TW;  // 480
   const intSpawnY = 16 * TH;  // 256
-  // Exit zone: bottom walkable row of the room (row 18). The bottom wall (row 19)
-  // now blocks movement, so the exit triggers here instead of the map edge.
-  const INT_EXIT = { x0: 0, y0: 18 * TH, x1: INT_PW, y1: INT_PH };
+  // Exit zone = the entrance carpet (content cols 27-33, rows 16-18) where the
+  // character first spawns. The exit prompt only shows here; pressing E returns
+  // to the exterior (main) scene.
+  const INT_EXIT = { x0: 27 * TW, y0: 16 * TH, x1: 34 * TW, y1: 19 * TH };
   // Camera: how many content-px are scrolled off the top-left edge.
   let intCamX = 0, intCamY = 0;
   // ---- End interior setup --------------------------------------------
@@ -432,6 +468,7 @@ async function main() {
   let transitioning = false;
 
   const hudHint = document.querySelector('.hud-hint');
+  const hudTop = $('hud-top');
   const sceneFrame = canvas.closest('.scene-frame');
 
   async function switchScene(to) {
@@ -459,6 +496,7 @@ async function main() {
         ((ay - intCamY) / H * 100) + '%',
       ];
       hudHint.innerHTML = '&#9654; <b>WASD</b> to explore &mdash; <b>E</b> to interact &mdash; walk down to exit';
+      hudTop.hidden = true;
     } else {
       girl.x = spawnX; girl.y = spawnY + 4;
       sceneFrame.style.aspectRatio = '';
@@ -466,7 +504,8 @@ async function main() {
       ui.refs.W = W;
       ui.refs.H = H;
       ui.refs.anchorCSS = null;
-      hudHint.innerHTML = '&#9654; use <b>WASD</b> / <b>arrow keys</b> to walk &mdash; the dog follows';
+      hudHint.innerHTML = '&#9654; use <b>WASD</b> or <b>arrow keys</b> to move around';
+      hudTop.hidden = false;
     }
     dog.x = girl.x - 14; dog.y = girl.y + 4;
     activeScene = to;
@@ -571,18 +610,22 @@ async function main() {
       let girlDrawn = false;
       for (const it of intFgTiles) {
         if (!girlDrawn && it.anchorY > girl.y) { girl.draw(ctx, charAssets); girlDrawn = true; }
-        drawTile(ctx, intScene, it.raw, it.dx, it.dy, 900);
+        if (it.img) ctx.drawImage(it.img, it.dx, it.dy, it.w, it.h);
+        else drawTile(ctx, intScene, it.raw, it.dx, it.dy, 900);
       }
       if (!girlDrawn) girl.draw(ctx, charAssets);
       // Doorway wall/arch tiles always on top — hides her while she passes through.
       for (const it of intDoorOverlay) drawTile(ctx, intScene, it.raw, it.dx, it.dy, 900);
       ctx.restore();
 
-      // Exit prompt: only when near bottom, no hotspot active, and panel closed.
-      intNearExit = girl.y >= INT_EXIT.y0;
+      // Exit prompt: only while the character is standing on the entrance carpet.
+      intNearExit = girl.x >= INT_EXIT.x0 && girl.x <= INT_EXIT.x1 &&
+                    girl.y >= INT_EXIT.y0 && girl.y <= INT_EXIT.y1;
       const pr = $('prompt');
       if (intNearExit && !ui.active && !ui.isOpen) {
-        pr.style.left = '50%';
+        // Fixed over the carpet centre — it does not hover on the character.
+        const ex = (INT_EXIT.x0 + INT_EXIT.x1) / 2;
+        pr.style.left = ((ex - intCamX) / W * 100) + '%';
         pr.style.top  = ((INT_EXIT.y0 - intCamY) / H * 100) + '%';
         pr.querySelector('.prompt-label').textContent = 'Exit';
         pr.hidden = false;

@@ -17,17 +17,21 @@ export const HOTSPOTS = [
 // Formula: world_x = (abs_tile_x - 19)*16, world_y = (abs_tile_y - 4)*16.
 export const INTERIOR_HOTSPOTS = [
   {
-    id: 'about',
+    id: 'skills',
     type: 'panel',
-    // Near dining table (center). Abs tiles x=36-43, y=16-17 — walkable.
-    zone: [272, 192, 384, 224],
-    anchor: [328, 184],
-    label: 'Interact',
-    title: 'ABOUT ME',
-    body: `<p>Hi — I'm <b>Rhythm Sharma</b>, UI/UX and Product Designer based in Berlin, Germany.</p>
-<p>3+ years designing SaaS platforms, developer tools, and API management systems — end-to-end, from research through developer handoff.</p>
-<p>I work directly with founders and C-level teams in agile environments, and use AI-augmented workflows (Claude Code, MCP servers, GitHub) to bridge design and engineering.</p>
-<p>Currently at <b>AtomFlo</b>, designing a multi-module SaaS workspace from scratch.</p>`,
+    // Whole dining table + the walkable ring around it (content cols 16-26,
+    // rows 9-16) so the prompt stays up as the character circles the table.
+    // Stops at row 9 so it doesn't overlap projects/contact just above (row 6-8).
+    zone: [256, 144, 416, 256],
+    anchor: [336, 176],
+    label: 'What I bring to the table',
+    title: 'WHAT I BRING TO THE TABLE',
+    body: `<p><b>Design</b><br>
+UI/UX · Interaction Design · Design Systems · Information Architecture · User Research &amp; Usability Testing · Wireframing &amp; Prototyping · Responsive Design · Accessibility · Design Handoff</p>
+<p><b>Tools</b><br>
+Figma (Advanced) · Framer · Adobe Illustrator</p>
+<p><b>Technical Domain</b><br>
+SaaS Product Design · API &amp; Developer Tool UX · AI-Augmented Workflows · Claude Code &amp; MCP Servers · GitHub &amp; Open Source</p>`,
   },
   {
     id: 'projects',
@@ -49,33 +53,30 @@ Responsive landing: property highlights, amenities, CTA hierarchy across desktop
 Live: <a href="https://thesquare.irarealty.in" target="_blank">thesquare.irarealty.in</a></p>`,
   },
   {
-    id: 'skills',
+    id: 'about',
     type: 'panel',
-    // Left corridor (content row 8, cols 10-14) — reachable floor inside the room.
-    zone: [160, 128, 240, 144],
-    anchor: [200, 120],
-    label: 'View',
-    title: 'SKILLS',
-    body: `<p><b>Design</b><br>
-UI/UX · Interaction Design · Design Systems · Information Architecture · User Research &amp; Usability Testing · Wireframing &amp; Prototyping · Responsive Design · Accessibility · Design Handoff</p>
-<p><b>Tools</b><br>
-Figma (Advanced) · Framer · Adobe Illustrator</p>
-<p><b>Technical Domain</b><br>
-SaaS Product Design · API &amp; Developer Tool UX · AI-Augmented Workflows · Claude Code &amp; MCP Servers · GitHub &amp; Open Source</p>`,
+    // Potions room — near the cauldron/potion table (content cols 8-9, rows 17-18).
+    // Zone covers the room's walkable floor near the table (cols 9-14, rows 15-18).
+    zone: [144, 240, 224, 288],
+    anchor: [176, 264],
+    label: 'About me',
+    title: 'ABOUT ME',
+    body: `<p>I'm <b>Rhythm Sharma</b>, a UI/UX and Product Designer based in Berlin who blends interface design, product thinking, and design systems into work that feels both usable and purposeful. Over 3+ years I've designed SaaS platforms, developer tools, and API management systems end-to-end — from research and wireframes through to developer handoff — working directly with founders and C-level teams in fast-moving agile environments. I bring a rare mix of visual craft, systems thinking, and AI-augmented workflows (Claude Code, MCP servers, GitHub) that bridge the gap between design and engineering. From onboarding flows to complex dashboards, every project reflects a strong focus on clarity, attention to detail, and real user needs. Currently I'm at <b>AtomFlo</b>, designing a multi-module SaaS workspace from scratch.</p>`,
   },
   {
     id: 'contact',
     type: 'panel',
-    // Right-center (near arched doorway/garden). Abs tiles x=39-44, y=10-12 — walkable.
-    zone: [320, 96, 400, 128],
-    anchor: [360, 88],
+    // Right at the bedside table with the telephone (nightstand at content col 18,
+    // rows 3-4). Tight zone: directly in front of / beside it (cols 18-19, rows 4-6).
+    zone: [288, 64, 320, 96],
+    anchor: [296, 80],
     label: 'Connect',
     title: 'CONTACT',
     body: `<p>Email: <a href="mailto:rhyths.sharma@gmail.com">rhyths.sharma@gmail.com</a></p>
 <p>Phone: +49 152 22093453</p>
 <p>Location: Berlin, Germany</p>
-<p>Portfolio &nbsp;·&nbsp; LinkedIn &nbsp;·&nbsp; Behance</p>
-<p>Languages: English (Fluent) · German (A1) · Hindi (Native)</p>`,
+<p>Portfolio: <a href="https://www.behance.net/rhythm-sharma" target="_blank">behance.net/rhythm-sharma</a></p>
+<p>LinkedIn: <a href="https://www.linkedin.com/in/rhythmss" target="_blank">linkedin.com/in/rhythmss</a></p>`,
   },
 ];
 
@@ -116,11 +117,12 @@ export class Interactions {
   }
 
   // Called each frame with the girl's ground position in the interior scene.
+  // The prompt hovers over the character (not a fixed hotspot anchor).
   updateInterior(girl) {
-    this._checkHotspots(INTERIOR_HOTSPOTS, girl);
+    this._checkHotspots(INTERIOR_HOTSPOTS, girl, true);
   }
 
-  _checkHotspots(list, girl) {
+  _checkHotspots(list, girl, overChar = false) {
     const fx = girl.x, fy = girl.y;
     let found = null;
     for (const h of list) {
@@ -131,7 +133,8 @@ export class Interactions {
 
     const p = this.refs.prompt;
     if (found && !this.open) {
-      const [ax, ay] = found.anchor;
+      // Float over the character's head in the interior; over the hotspot anchor otherwise.
+      const [ax, ay] = overChar ? [girl.x, girl.y - 40] : found.anchor;
       if (this.refs.anchorCSS) {
         const [l, t] = this.refs.anchorCSS(ax, ay);
         p.style.left = l; p.style.top = t;

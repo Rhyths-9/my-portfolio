@@ -96,6 +96,8 @@ body {
   z-index: 3;
 }
 .hud-bottom { bottom: 0; justify-content: center; }
+.hud-top { top: 0; justify-content: center; }
+.hud-top[hidden] { display: none; }
 
 .hud-hint {
   font-size: clamp(13px, 2vw, 20px);
@@ -104,6 +106,18 @@ body {
   background: rgba(20, 16, 24, 0.55);
   padding: 4px 12px;
   border-radius: 3px;
+}
+
+.hud-msg {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(8px, 1.3vw, 12px);
+  line-height: 1.5;
+  color: #ffe9b0;
+  text-shadow: 2px 2px 0 #000, 0 0 8px rgba(0, 0, 0, 0.6);
+  background: rgba(20, 16, 24, 0.6);
+  padding: 7px 14px;
+  border-radius: 3px;
+  text-align: center;
 }
 
 /* ---- Scene-transition fade overlay ---- */
